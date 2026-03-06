@@ -24,19 +24,7 @@ TypeScript 的にも `result` の型は `unknown` なので `result.content` は
 
 ## 🟠 High (設計・実装の重大なミス)
 
-### 2. Medium (霊媒師) の実装が間違っている
-**場所:** `src/game/roles/Medium.ts`
-
-```typescript
-readonly nightActionType: NightActionType = 'none'; // ← 'inspect' であるべき
-canActAt(_dayNumber: number): boolean { return false; } // ← trueであるべき
-```
-霊媒師は処刑されたプレイヤーの陣営を知ることができる役職。
-`nightActionType` は `'inspect'` で、毎晩結果を受け取るべき (`canActAt` = `true`)。
-占い師と異なり「誰かを選んで調べる」ではなく「処刑者の結果が自動通知」される点で
-アクションの仕組みは別途設計が必要だが、まず `none/false` は明らかに誤り。
-
-### 3. 役職シャッフルのアルゴリズムが偏る
+### 2. 役職シャッフルのアルゴリズムが偏る
 **場所:** `src/game/Game.ts:61`
 
 ```typescript
@@ -46,7 +34,7 @@ const shuffledRoles = [...this.settings.roles].sort(() => Math.random() - 0.5);
 Fisher-Yates アルゴリズムを使うべき。
 (人狼ゲームでは役職分布の公平性が重要)
 
-### 4. GameManager.createGame の Game コンストラクタ呼び出しが冗長
+### 3. GameManager.createGame の Game コンストラクタ呼び出しが冗長
 **場所:** `src/game/GameManager.ts:12`
 
 ```typescript
@@ -63,7 +51,7 @@ const game = new Game(channelId, guildId, channelId, hostId);
 
 ## 🔵 Low (軽微・命名・一貫性)
 
-### 5. Villager の `name` が不統一
+### 4. Villager の `name` が不統一
 **場所:** `src/game/roles/Villager.ts:5`
 
 ```typescript
@@ -71,12 +59,12 @@ readonly name = '市民'; // '村人' が一般的な人狼ゲーム用語
 ```
 コメントや設定では「村人」と呼んでいるが、表示名は「市民」になっている。
 
-### 6. ~~`werewolf.ts` の `execute` が直接 `interaction.reply()` を呼ぶ設計~~ ✅ 修正済み (#1 と同時対応)
+### 5. ~~`werewolf.ts` の `execute` が直接 `interaction.reply()` を呼ぶ設計~~ ✅ 修正済み (#1 と同時対応)
 `index.ts` と `werewolf.ts` の責任分担が不明確。
 `index.ts` 側が reply するか、コマンド側が reply するかを統一する必要がある。
 (問題 #1 と根本原因が同じ)
 
-### 7. `GatewayIntentBits` の設定が最小限
+### 6. `GatewayIntentBits` の設定が最小限
 **場所:** `src/index.ts:6`
 
 ```typescript
@@ -85,7 +73,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 現在は Guilds のみ。ゲーム進行でメッセージの受信やメンバー情報が必要になった際に
 インテントの追加が必要になる。(現時点では問題ないが将来的な拡張で詰まる)
 
-### 8. ホスト以外はゲームを強制終了できない
+### 7. ホスト以外はゲームを強制終了できない
 退出コマンドはロビー中のプレイヤー自身のみ退出できる。
 ホストが中断・強制終了するコマンドがない。
 
@@ -96,5 +84,5 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 | 優先度 | 件数 |
 |--------|------|
 | 🔴 Critical | 1 | 1 修正済み |
-| 🟠 High     | 3 | 未対応 |
+| 🟠 High     | 2 | 未対応 |
 | 🔵 Low      | 4 | 2 修正済み |
