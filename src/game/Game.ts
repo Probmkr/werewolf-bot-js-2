@@ -58,7 +58,11 @@ export class Game {
     }
 
     private assignRoles(): void {
-        const shuffledRoles = [...this.settings.roles].sort(() => Math.random() - 0.5);
+        const shuffledRoles = [...this.settings.roles];
+        for (let i = shuffledRoles.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledRoles[i], shuffledRoles[j]] = [shuffledRoles[j], shuffledRoles[i]];
+        }
         this.players.forEach((player, index) => {
             const roleId = shuffledRoles[index];
             player.role = createRole(roleId);

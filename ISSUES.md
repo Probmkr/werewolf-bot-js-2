@@ -24,7 +24,7 @@ TypeScript 的にも `result` の型は `unknown` なので `result.content` は
 
 ## 🟠 High (設計・実装の重大なミス)
 
-### 2. 役職シャッフルのアルゴリズムが偏る
+### 2. ~~役職シャッフルのアルゴリズムが偏る~~ ✅ 修正済み
 **場所:** `src/game/Game.ts:61`
 
 ```typescript
@@ -84,5 +84,5 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 | 優先度 | 件数 |
 |--------|------|
 | 🔴 Critical | 1 | 1 修正済み |
-| 🟠 High     | 2 | 未対応 |
+| 🟠 High     | 2 | 1 修正済み |
 | 🔵 Low      | 4 | 2 修正済み |
