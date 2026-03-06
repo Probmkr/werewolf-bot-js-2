@@ -1,30 +1,47 @@
-
+import { Client } from 'discord.js';
 import { Game } from './Game.js';
-import { Collection } from 'discord.js';
-import { randomUUID } from 'crypto';
+import { Player } from './models/Player.js';
 
-export class GameManager {
-    private games: Collection<string, Game> = new Collection(); // Maps channelId to Game
+class GameManager {
+    private games: Map<string, Game> = new Map();
 
-    createGame(guildId: string, channelId: string, hostId: string): Game {
+    createGame(channelId: string, guildId: string, hostId: string): Game {
         if (this.games.has(channelId)) {
-            throw new Error('A game is already running in this channel.');
+            throw new Error('このチャンネルには既に進行中のゲームがあります。');
         }
-        const gameId = randomUUID();
-        const game = new Game(gameId, guildId, channelId, hostId);
+        const game = new Game(channelId, guildId, channelId, hostId);
         this.games.set(channelId, game);
         return game;
     }
 
-    getGameByChannel(channelId: string): Game | undefined {
+    getGame(channelId: string): Game | undefined {
         return this.games.get(channelId);
     }
 
-    endGame(channelId: string): boolean {
-        return this.games.delete(channelId);
+    endGame(channelId: string): void {
+        this.games.delete(channelId);
     }
 
-    listGames(): Game[] {
-        return Array.from(this.games.values());
+    async startGame(channelId: string, client: Client): Promise<void> {
+        const game = this.getGame(channelId);
+        if (!game) throw new Error('ゲームが見つかりません。');
+
+        game.start();
+
+        // 役職通知
+        const notifications = game.players.map(async (player) => {
+            try {
+                const user = await client.users.fetch(player.id);
+                if (player.role) {
+                    await user.send(`あなたの役職は **${player.role.name}** です。\n陣営: ${player.role.team}`);
+                }
+            } catch (error) {
+                console.error(`Failed to send DM to ${player.name}:`, error);
+            }
+        });
+
+        await Promise.all(notifications);
     }
 }
+
+export const gameManager = new GameManager();
