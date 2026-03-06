@@ -1,12 +1,13 @@
-import { Role, Team, NightActionType } from './Role.js';
+import type { Role, Team, NightActionType } from './Role.js';
 
 export class Seer implements Role {
-    public readonly id = 'seer';
-    public readonly name = '占い師';
-    public readonly team: Team = 'village';
-    public readonly nightActionType: NightActionType = 'inspect';
+  readonly id = 'seer';
+  readonly name = '占い師';
+  readonly team: Team = 'village';
+  readonly nightActionType: NightActionType = 'inspect';
 
-    public canActAt(nightNumber: number): boolean {
-        return true;
-    }
+  canActAt(_dayNumber: number): boolean {
+    // 毎晩占い可能（初日占いありルールを想定）
+    return true;
+  }
 }

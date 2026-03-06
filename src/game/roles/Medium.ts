@@ -1,8 +1,8 @@
 import type { Role, Team, NightActionType } from './Role.js';
 
-export class Villager implements Role {
-  readonly id = 'villager';
-  readonly name = '市民';
+export class Medium implements Role {
+  readonly id = 'medium';
+  readonly name = '霊能者';
   readonly team: Team = 'village';
   readonly nightActionType: NightActionType = 'none';
 

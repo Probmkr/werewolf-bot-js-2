@@ -1,12 +1,13 @@
-
-export type Team = 'wolf' | 'village' | 'madman';
+export type Team = 'village' | 'wolf' | 'madman';
 export type NightActionType = 'attack' | 'inspect' | 'guard' | 'none';
 
 export interface Role {
-    id: string;
-    name: string;
-    team: Team;
-    nightActionType: NightActionType;
-    canActAt(nightNumber: number): boolean;
-    // performNightAction(context: any): Promise<void>; // This will be implemented later
+  readonly id: string;
+  readonly name: string;
+  readonly team: Team;
+  readonly nightActionType: NightActionType;
+
+  // その日の夜に行動（入力）が可能かどうか
+  // dayNumber: 1日目夜=1, 2日目夜=2... (実装に合わせて調整)
+  canActAt(dayNumber: number): boolean;
 }
