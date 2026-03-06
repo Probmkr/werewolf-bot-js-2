@@ -1,6 +1,6 @@
 # warewolf-bot
 
-Discord 上で人狼（人狼ジャッジメント準拠）を遊べる Bot を TypeScript で実装するプロジェクトです。
+Discord 上で人狼（人狼ジャッジメント準拠）を遊べる Bot を TypeScript で実装するプロジェクトです。ほぼ全て AI エージェントによって作られています。
 
 ## セットアップ
 
