@@ -1,32 +1,37 @@
+
+
 ---
+
 name: discord-werewolf-bot
 overview: Discord 上で人狼ジャッジメント準拠ルールの人狼ゲームを遊べる TypeScript ベースの Discord Bot を実装する。まずは 6 役職（人狼・市民・占い師・霊能者・狩人・狂人）に限定し、後から新役職を追加しやすいアーキテクチャを設計する。
 todos:
-  - id: setup-project
-    content: TypeScript + Node.js プロジェクトを作成し、discord.js を導入して基本的な起動処理と /ping コマンドを実装する
-    status: pending
-  - id: design-game-model
-    content: Game, Player, Role インターフェースと GameManager の型設計・実装を行う
-    status: pending
-  - id: implement-lobby-flow
-    content: ロビー〜役職配布までのフロー（/werewolf create, /werewolf join, /werewolf start と役職 DM 通知）を実装する
-    status: pending
-  - id: implement-core-phases
-    content: 夜・朝・昼・投票・処刑フェーズの最小限の進行ロジックとステートマシンを実装する
-    status: pending
-  - id: add-initial-roles
-    content: 人狼・市民・占い師・霊能者・狩人・狂人の 6 役職のロジックを Role 実装として追加する
-    status: pending
-  - id: implement-win-conditions
-    content: 村人陣営・人狼陣営の勝敗判定とゲーム終了フェーズの処理を実装する
-    status: pending
-  - id: improve-error-handling
-    content: コマンドの不正利用やフェーズ不一致時のエラーメッセージなどガード処理を強化する
-    status: pending
-  - id: document-role-extension
-    content: 新役職を追加するための手順と Role API を簡潔にドキュメント化する
-    status: pending
+
+- id: setup-project
+content: TypeScript + Node.js プロジェクトを作成し、discord.js を導入して基本的な起動処理と /ping コマンドを実装する
+status: pending
+- id: design-game-model
+content: Game, Player, Role インターフェースと GameManager の型設計・実装を行う
+status: pending
+- id: implement-lobby-flow
+content: ロビー〜役職配布までのフロー（/werewolf create, /werewolf join, /werewolf start と役職 DM 通知）を実装する
+status: pending
+- id: implement-core-phases
+content: 夜・朝・昼・投票・処刑フェーズの最小限の進行ロジックとステートマシンを実装する
+status: pending
+- id: add-initial-roles
+content: 人狼・市民・占い師・霊能者・狩人・狂人の 6 役職のロジックを Role 実装として追加する
+status: pending
+- id: implement-win-conditions
+content: 村人陣営・人狼陣営の勝敗判定とゲーム終了フェーズの処理を実装する
+status: pending
+- id: improve-error-handling
+content: コマンドの不正利用やフェーズ不一致時のエラーメッセージなどガード処理を強化する
+status: pending
+- id: document-role-extension
+content: 新役職を追加するための手順と Role API を簡潔にドキュメント化する
+status: pending
 isProject: false
+
 ---
 
 ## 目的
@@ -163,7 +168,7 @@ stateDiagram-v2
   - `dayNumber`: 何日目か
   - `nightActions`: 夜行動の一時保存（人狼の襲撃先、占い先、護衛先 等）
   - `voteResults`: 投票集計結果
-  - `logs`: 進行ログ（任意）
+  - `logs`: 進行ログ
 - **GameManager**
   - ゲーム ID またはチャンネル ID をキーとして `Game` インスタンスを管理。
   - 主なメソッド: `createGame`, `getGameByChannel`, `endGame`, `listGames` など。
@@ -174,27 +179,28 @@ stateDiagram-v2
   - `.env` などで `DISCORD_TOKEN`, `CLIENT_ID` を設定。
   - スラッシュコマンドは起動時に Discord API へ登録（`/werewolf` 名前空間などでまとめる）。
 - **メインコマンド案**
-  - `**/werewolf create`**
+  - **`/werewolf create`**
     - 説明: 現在のチャンネルに村を作成する。
     - オプション: `max_players`（最大人数）、`roles_preset`（今回は固定で 6 役職構成）。
     - 動作: `GameManager` に新ゲームを作成し、募集メッセージを送信。ホストをコマンド実行者に設定。
-  - `**/werewolf join`**
+  - **`/werewolf join`**
     - 説明: 作成済みの村に参加。
     - 動作: ゲーム状態がロビーの場合にのみ `players` に追加。
-  - `**/werewolf leave**`
+  - **`/werewolf leave`**
     - 説明: ゲーム開始前なら退出、開始後は「自殺」扱いか退出不可かはルールで決める（開始前のみ許可にするのが簡単）。
-  - `**/werewolf start**`
+  - **`/werewolf start`**
     - 説明: ホストのみ使用可能。募集を締め切り、役職配布を開始。
-  - `**/werewolf status**`
+  - **`/werewolf status`**
     - 説明: 現在のフェーズ、日数、生存者一覧を表示。
-  - `**/werewolf end**`
+  - **`/werewolf end`**
     - 説明: 強制終了。ホスト or 管理者のみ。
 - **インタラクション UI**
-  - **参加ボタン**: ロビーのメッセージに「参加する」「退出する」ボタンを付ける案も可（スラッシュコマンドと併用）。
+  - **参加ボタン**: ロビーのメッセージに「参加する」「退出する」ボタンを付ける（スラッシュコマンドと併用）。
   - **投票 UI**: 生存者一覧から選択するセレクトメニュー。
   - **夜行動 UI**: DM で対象を選ぶセレクトメニュー or ボタン。
 - **エラー・例外パターン**
   - 既にゲームが存在するチャンネルで `create` した場合 → エラーメッセージ。
+  - すでにゲームが存在するサーバーで `create` した場合 → エラーメッセージ（暫定）。
   - フェーズ不一致のコマンド（例: 進行中に `join`） → 使用不可メッセージ。
   - 行動済みの夜に再度行動しようとした場合 → 行動済みメッセージ。
 
@@ -245,3 +251,4 @@ stateDiagram-v2
 7. **エラーハンドリング・ガード強化**
 8. **簡易ログ出力・ステータス表示コマンドの充実**
 9. **新役職追加のための API 整理・ドキュメント化**
+
