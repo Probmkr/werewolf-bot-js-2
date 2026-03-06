@@ -2,6 +2,7 @@
 import { Game as GameData, GameSettings } from './models/Game.js';
 import { Player } from './models/Player.js';
 import { Role } from './roles/Role.js';
+import { DEFAULT_GAME_SETTINGS } from '../config.js';
 
 export class Game {
     public readonly id: string;
@@ -19,8 +20,8 @@ export class Game {
         this.channelId = channelId;
         this.hostId = hostId;
         this.settings = settings || {
-            roles: ['werewolf', 'villager', 'seer', 'medium', 'hunter', 'madman'],
-            anonymousVote: false,
+            ...DEFAULT_GAME_SETTINGS,
+            roles: [...DEFAULT_GAME_SETTINGS.roles], // 配列は参照渡しになるためコピーを作成
         };
     }
 }
