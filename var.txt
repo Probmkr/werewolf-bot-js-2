@@ -1,0 +1,2 @@
+招待リンク
+https://discord.com/oauth2/authorize?client_id=1479381494995619881&permissions=2816399303060496&integration_type=0&scope=bot+applications.commands
