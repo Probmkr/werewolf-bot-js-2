@@ -8,10 +8,10 @@ todos:
 
 - id: setup-project
 content: TypeScript + Node.js プロジェクトを作成し、discord.js を導入して基本的な起動処理と /ping コマンドを実装する
-status: pending
+status: done
 - id: design-game-model
 content: Game, Player, Role インターフェースと GameManager の型設計・実装を行う
-status: pending
+status: done
 - id: implement-lobby-flow
 content: ロビー〜役職配布までのフロー（/werewolf create, /werewolf join, /werewolf start と役職 DM 通知）を実装する
 status: pending
