@@ -27,7 +27,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const user = interaction.user;
 
     if (!channelId || !guildId) {
-        return interaction.reply({ content: 'このコマンドはサーバー内でのみ使用できます。', ephemeral: true });
+        await interaction.reply({ content: 'このコマンドはサーバー内でのみ使用できます。', ephemeral: true });
+        return;
     }
 
     try {
@@ -44,7 +45,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             case 'join': {
                 const game = gameManager.getGame(channelId);
                 if (!game) {
-                    return interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+                    await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+                    return;
                 }
                 game.addPlayer({
                     id: user.id,
@@ -57,7 +59,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             case 'leave': {
                 const game = gameManager.getGame(channelId);
                 if (!game) {
-                    return interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+                    await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+                    return;
                 }
                 game.removePlayer(user.id);
                 await interaction.reply(`${user.toString()} が退出しました。 (現在 ${game.players.length}人)`);
@@ -66,10 +69,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             case 'start': {
                 const game = gameManager.getGame(channelId);
                 if (!game) {
-                    return interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+                    await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+                    return;
                 }
                 if (game.hostId !== user.id) {
-                    return interaction.reply({ content: 'ゲームを開始できるのはホストのみです。', ephemeral: true });
+                    await interaction.reply({ content: 'ゲームを開始できるのはホストのみです。', ephemeral: true });
+                    return;
                 }
 
                 await interaction.reply('ゲームを開始します！役職を配布しています...');

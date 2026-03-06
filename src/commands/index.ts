@@ -9,7 +9,7 @@ export type Command = {
   data: { toJSON(): RESTPostAPIChatInputApplicationCommandsJSONBody };
   execute: (
     interaction: ChatInputCommandInteraction,
-  ) => Promise<void | { content: string } | unknown>;
+  ) => Promise<void>;
 };
 
 export const commands: Command[] = [werewolfCommand];

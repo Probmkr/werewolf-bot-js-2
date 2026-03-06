@@ -19,8 +19,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   try {
-    const result = await command.execute(interaction);
-    await interaction.reply({ content: result.content });
+    await command.execute(interaction);
   } catch (err) {
     console.error(err);
     const content = "An error occurred while executing this command.";
