@@ -2,7 +2,7 @@
 
 ## 🔴 Critical (動作が壊れているバグ)
 
-### 1. コマンド実行後に必ずエラーメッセージが送られる
+### 1. ~~コマンド実行後に必ずエラーメッセージが送られる~~ ✅ 修正済み
 **場所:** `src/index.ts:22-23` / `src/commands/werewolf.ts`
 
 `index.ts` はコマンドの `execute()` の戻り値を使って `interaction.reply()` を呼び出す設計になっている:
@@ -71,7 +71,7 @@ readonly name = '市民'; // '村人' が一般的な人狼ゲーム用語
 ```
 コメントや設定では「村人」と呼んでいるが、表示名は「市民」になっている。
 
-### 6. `werewolf.ts` の `execute` が直接 `interaction.reply()` を呼ぶ設計
+### 6. ~~`werewolf.ts` の `execute` が直接 `interaction.reply()` を呼ぶ設計~~ ✅ 修正済み (#1 と同時対応)
 `index.ts` と `werewolf.ts` の責任分担が不明確。
 `index.ts` 側が reply するか、コマンド側が reply するかを統一する必要がある。
 (問題 #1 と根本原因が同じ)
@@ -95,6 +95,6 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 | 優先度 | 件数 |
 |--------|------|
-| 🔴 Critical | 1 |
-| 🟠 High     | 3 |
-| 🔵 Low      | 4 |
+| 🔴 Critical | 1 | 1 修正済み |
+| 🟠 High     | 3 | 未対応 |
+| 🔵 Low      | 4 | 2 修正済み |
