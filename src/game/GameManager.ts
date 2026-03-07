@@ -222,6 +222,11 @@ class GameManager {
           : '🌅 夜が明けました。\n✨ 今夜の犠牲者はいませんでした。';
         await ch.send(morningMsg);
 
+        // [DEBUG] 朝のプレイヤー生存状況（生存者→死亡者の順）
+        const alive = game.players.filter(p => p.isAlive).map(p => `✅ ${p.name} (${p.role?.name ?? '?'})`);
+        const dead = game.players.filter(p => !p.isAlive).map(p => `💀 ${p.name} (${p.role?.name ?? '?'})`);
+        await this.sendDebug(game, client, `プレイヤー状況 (${game.dayNumber}日目朝):\n${[...alive, ...dead].join('\n')}`);
+
         if (winner) {
           const winnerLabel = winner === 'wolf' ? '人狼' : '村人';
           await ch.send(`🎉 ゲーム終了！ **${winnerLabel}陣営** の勝利です！`);
