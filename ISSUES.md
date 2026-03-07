@@ -64,7 +64,7 @@ readonly name = '市民'; // '村人' が一般的な人狼ゲーム用語
 `index.ts` 側が reply するか、コマンド側が reply するかを統一する必要がある。
 (問題 #1 と根本原因が同じ)
 
-### 6. `GatewayIntentBits` の設定が最小限
+### 6. ~~`GatewayIntentBits` の設定が最小限~~ ✅ 修正済み
 **場所:** `src/index.ts:6`
 
 ```typescript
