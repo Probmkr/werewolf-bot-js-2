@@ -132,7 +132,7 @@ class GameManager {
     return undefined;
   }
 
-  /** 夜を解決する（implement-night-resolve で実装予定のスタブ） */
+  /** 夜を解決する */
   async resolveNight(channelId: string, client: Client): Promise<void> {
     const game = this.getGame(channelId);
     if (!game || game.phase !== 'night') return;
@@ -142,20 +142,72 @@ class GameManager {
       game.nightActionTimeout = undefined;
     }
 
-    console.log(`[Game ${game.id}] Night actions:`, game.nightActions);
+    // 1. 護衛 → 襲撃判定
+    const guardedId = game.nightActions.guard;
+    const attackId = game.nightActions.attack;
+    const victim = (() => {
+      if (!attackId || attackId === guardedId) return undefined;
+      const target = game.players.find(p => p.id === attackId);
+      if (!target?.isAlive) return undefined;
+      target.isAlive = false;
+      return target;
+    })();
 
-    // TODO: implement-night-resolve で実際の解決ロジックを実装する
+    // 2. 占い師への結果 DM
+    const inspectId = game.nightActions.inspect;
+    if (inspectId) {
+      const inspected = game.players.find(p => p.id === inspectId);
+      const seer = game.players.find(p => p.role?.nightActionType === 'inspect' && p.isAlive);
+      if (inspected && seer) {
+        try {
+          const seerUser = await client.users.fetch(seer.id);
+          const result = inspected.role?.team === 'wolf' ? '人狼' : '人狼ではない';
+          await seerUser.send(`🔮 占い結果: **${inspected.name}** は **${result}** でした。`);
+        } catch (error) {
+          console.error(`Failed to send inspect result to seer:`, error);
+        }
+      }
+    }
+
+    // 3. 霊能者へのパッシブ通知（夜の犠牲者）
+    if (victim) {
+      const medium = game.players.find(p => p.role?.id === 'medium' && p.isAlive);
+      if (medium) {
+        try {
+          const mediumUser = await client.users.fetch(medium.id);
+          await mediumUser.send(`🔭 霊能結果: **${victim.name}** は **${victim.role?.name ?? '不明'}** でした。`);
+        } catch (error) {
+          console.error(`Failed to send medium notification:`, error);
+        }
+      }
+    }
+
+    // 4. 勝敗判定
+    const winner = game.checkWinConditions();
+
+    // 5. チャンネルへの結果告知 + フェーズ遷移
     try {
       const channel = await client.channels.fetch(channelId);
       if (channel?.isTextBased()) {
-        await (channel as TextChannel).send('🌅 夜が明けました…');
+        const ch = channel as TextChannel;
+        const morningMsg = victim
+          ? `🌅 夜が明けました。\n💀 **${victim.name}** が犠牲になりました。`
+          : '🌅 夜が明けました。\n✨ 今夜の犠牲者はいませんでした。';
+        await ch.send(morningMsg);
+
+        if (winner) {
+          const winnerLabel = winner === 'wolf' ? '人狼' : '村人';
+          await ch.send(`🎉 ゲーム終了！ **${winnerLabel}陣営** の勝利です！`);
+          game.phase = 'end';
+        } else {
+          game.phase = 'morning';
+        }
       }
     } catch (error) {
       console.error('Failed to send morning message:', error);
     }
 
     game.nightActions = {};
-    game.phase = 'morning';
   }
 }
 

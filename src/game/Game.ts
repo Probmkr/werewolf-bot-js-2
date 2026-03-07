@@ -133,6 +133,22 @@ export class Game {
     return true;
   }
 
+  /**
+   * 勝敗判定。
+   * - 村人陣営勝利: 生存する人狼が 0
+   * - 人狼陣営勝利: 生存する人狼数 >= 生存する村人陣営数
+   * - null: まだ決着していない
+   */
+  checkWinConditions(): 'wolf' | 'village' | null {
+    const alive = this.players.filter(p => p.isAlive);
+    const aliveWolves = alive.filter(p => p.role?.team === 'wolf');
+    const aliveVillagers = alive.filter(p => p.role?.team === 'village');
+
+    if (aliveWolves.length === 0) return 'village';
+    if (aliveWolves.length >= aliveVillagers.length) return 'wolf';
+    return null;
+  }
+
   private shuffle<T>(arr: T[]): T[] {
     const result = [...arr];
     for (let i = result.length - 1; i > 0; i--) {
