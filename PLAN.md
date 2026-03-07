@@ -14,15 +14,21 @@ content: Game, Player, Role インターフェースと GameManager の型設計
 status: done
 - id: implement-lobby-flow
 content: ロビー〜役職配布までのフロー（/werewolf create, /werewolf join, /werewolf start と役職 DM 通知）を実装する
+status: done
+- id: implement-night-input
+content: 夜フェーズ開始時に行動者（人狼・占い師・狩人）へ DM でセレクトメニューを送り、回答を nightActions に保存するまでの入力収集ロジックを実装する
 status: pending
-- id: implement-core-phases
-content: 夜・朝・昼・投票・処刑フェーズの最小限の進行ロジックとステートマシンを実装する
+- id: implement-night-resolve
+content: resolveNight() を実装する。護衛→襲撃判定・占い師への結果DM・霊媒師へのパッシブ通知を含む各役職の夜行動ロジックをまとめて解決する
 status: pending
-- id: add-initial-roles
-content: 人狼・市民・占い師・霊能者・狩人・狂人の 6 役職のロジックを Role 実装として追加する
+- id: implement-day-phases
+content: 朝フェーズ（犠牲者公開）・昼フェーズ（議論タイマー）・投票フェーズ（生存者セレクトメニュー UI・投票収集）を実装する
+status: pending
+- id: implement-execution
+content: 処刑フェーズを実装する。投票集計・同票処理・処刑結果のチャンネル公表・次フェーズ（夜 or 終了）への遷移を行う
 status: pending
 - id: implement-win-conditions
-content: 村人陣営・人狼陣営の勝敗判定とゲーム終了フェーズの処理を実装する
+content: checkWinConditions() と終了フェーズを実装する。村人勝利・人狼勝利の判定、全役職の公開、勝利陣営のアナウンスを行う
 status: pending
 - id: improve-error-handling
 content: コマンドの不正利用やフェーズ不一致時のエラーメッセージなどガード処理を強化する
@@ -266,20 +272,28 @@ stateDiagram-v2
 
 ## 段階的実装ステップ案
 
-1. **プロジェクト初期化**
+1. ✅ **プロジェクト初期化** (`setup-project`)
   - TypeScript + Node.js プロジェクト作成、`discord.js` 導入、基本的な `/ping` コマンドで動作確認。
-2. **ゲームモデルと GameManager の実装**
+2. ✅ **ゲームモデルと GameManager の実装** (`design-game-model`)
   - `Game`, `Player` 型、GameManager の作成。
-3. **ロビー〜役職配布までの実装**
+3. ✅ **ロビー〜役職配布までの実装** (`implement-lobby-flow`)
   - `/werewolf create`, `/werewolf join`, `/werewolf start` を実装し、役職配布と DM 通知を実装。
-4. **夜フェーズ・昼フェーズ・投票フェーズの最小実装**
-  - 夜行動（まずは人狼襲撃と占い）
-  - 朝の結果表示
-  - 昼の議論タイマー（メッセージのみ）
-  - 投票と処刑
-5. **残り役職（霊能者・狩人・狂人）のロジック追加**
-6. **勝敗判定とゲーム終了処理**
-7. **エラーハンドリング・ガード強化**
-8. **簡易ログ出力・ステータス表示コマンドの充実**
-9. **新役職追加のための API 整理・ドキュメント化**
+  - ロビーボタン（参加する・退出する）、人狼への仲間通知も含む。
+4. **夜行動の入力収集** (`implement-night-input`)
+  - 夜フェーズ開始時に行動者（人狼・占い師・狩人）へ DM でセレクトメニューを送信。
+  - 回答を `nightActions` に保存し、全員確定またはタイムアウトで解決フェーズへ。
+5. **夜行動の解決と役職ロジック** (`implement-night-resolve`)
+  - `resolveNight()` を実装。護衛→襲撃判定・占い師への結果 DM・霊媒師へのパッシブ通知を含む。
+6. **朝・昼・投票フェーズ** (`implement-day-phases`)
+  - 朝フェーズ: 犠牲者をチャンネルに公開。
+  - 昼フェーズ: 議論タイマー（固定時間）。
+  - 投票フェーズ: 生存者セレクトメニュー UI と投票収集。
+7. **処刑フェーズ** (`implement-execution`)
+  - 投票集計・同票処理・処刑結果のチャンネル公表・次フェーズ（夜 or 終了）への遷移。
+8. **勝敗判定とゲーム終了** (`implement-win-conditions`)
+  - `checkWinConditions()` の実装（村人勝利・人狼勝利）。
+  - 終了フェーズ: 全員の役職公開と勝利陣営のアナウンス。
+9. **エラーハンドリング・ガード強化** (`improve-error-handling`)
+  - フェーズ不一致コマンド、行動済み再送など。
+10. **新役職追加の API 整理・ドキュメント化** (`document-role-extension`)
 
