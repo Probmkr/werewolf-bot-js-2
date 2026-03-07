@@ -142,10 +142,11 @@ export class Game {
   checkWinConditions(): 'wolf' | 'village' | null {
     const alive = this.players.filter(p => p.isAlive);
     const aliveWolves = alive.filter(p => p.role?.team === 'wolf');
-    const aliveVillagers = alive.filter(p => p.role?.team === 'village');
+    // 人狼ジャッジメント準拠: 狼 >= 狼以外全員（村人 + 狂人）で人狼陣営勝利
+    const aliveNonWolves = alive.filter(p => p.role?.team !== 'wolf');
 
     if (aliveWolves.length === 0) return 'village';
-    if (aliveWolves.length >= aliveVillagers.length) return 'wolf';
+    if (aliveWolves.length >= aliveNonWolves.length) return 'wolf';
     return null;
   }
 
