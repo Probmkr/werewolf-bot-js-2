@@ -42,6 +42,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (action === 'leave') {
         game.removePlayer(user.id);
         await interaction.reply(`${user.toString()} が退出しました。 (現在 ${game.players.length}人)`);
+      } else if (action === 'skip') {
+        const { message, allAgreed } = gameManager.submitSkipVote(channelId, user.id);
+        await interaction.reply(message);
+        if (allAgreed) await gameManager.advanceFromSkip(channelId, interaction.client);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';

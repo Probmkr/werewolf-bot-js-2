@@ -1,5 +1,7 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   Client,
   StringSelectMenuBuilder,
   TextChannel,
@@ -18,6 +20,39 @@ class GameManager {
     const game = new Game(guildId, channelId, hostId, debugMode ? { ...DEFAULT_GAME_SETTINGS, roles: [...DEFAULT_GAME_SETTINGS.roles], debugMode: true } : undefined);
     this.games.set(channelId, game);
     return game;
+  }
+
+  /** フェーズ関連のタイムアウトをすべてクリアする */
+  private clearPhaseTimeouts(game: Game): void {
+    if (game.discussionTimeout) { clearTimeout(game.discussionTimeout); game.discussionTimeout = undefined; }
+    if (game.voteTimeout) { clearTimeout(game.voteTimeout); game.voteTimeout = undefined; }
+    for (const t of game.countdownTimeouts) clearTimeout(t);
+    game.countdownTimeouts = [];
+    game.phaseEndsAt = undefined;
+  }
+
+  /** 残り 1分・30秒・10秒のカウントダウンメッセージをスケジュールする */
+  private scheduleCountdowns(game: Game, channelId: string, client: Client): void {
+    const milestones = [
+      { ms: 60000, label: '残り60秒です。' },
+      { ms: 30000, label: '残り30秒です。' },
+      { ms: 10000, label: '残り10秒です。' },
+    ];
+    for (const { ms, label } of milestones) {
+      const delay = game.phaseEndsAt! - Date.now() - ms;
+      if (delay <= 0) continue;
+      const t = setTimeout(async () => {
+        try {
+          const channel = await client.channels.fetch(channelId);
+          if (channel?.isTextBased()) {
+            await (channel as TextChannel).send(`⏰ ${label}`);
+          }
+        } catch (error) {
+          console.error('Failed to send countdown message:', error);
+        }
+      }, delay);
+      game.countdownTimeouts.push(t);
+    }
   }
 
   /** デバッグモードが有効なときのみチャンネルにログを送信する */
@@ -140,6 +175,26 @@ class GameManager {
     }, game.settings.nightActionTimeoutMs);
   }
 
+  /** スキップ同意を登録し、表示用メッセージと全員同意フラグを返す */
+  submitSkipVote(channelId: string, userId: string): { message: string; allAgreed: boolean } {
+    const game = this.getGame(channelId);
+    if (!game) throw new Error('このチャンネルでゲームは開催されていません。');
+    const aliveCount = game.players.filter(p => p.isAlive).length;
+    const allAgreed = game.addSkipVote(userId);
+    return {
+      message: `<@${userId}> がスキップに同意しました。(${game.skipVoters.size}/${aliveCount}人)`,
+      allAgreed,
+    };
+  }
+
+  /** スキップ全員同意後にフェーズを進める（interaction.reply の後に呼ぶ） */
+  async advanceFromSkip(channelId: string, client: Client): Promise<void> {
+    const game = this.getGame(channelId);
+    if (!game) return;
+    if (game.phase === 'discussion') await this.startVote(channelId, client);
+    else if (game.phase === 'vote') await this.resolveVote(channelId, client);
+  }
+
   /** プレイヤー ID からゲームを取得する（DM インタラクションの紐付けに使用） */
   getGameByPlayerId(userId: string): Game | undefined {
     for (const game of this.games.values()) {
@@ -252,14 +307,24 @@ class GameManager {
     if (!game) return;
 
     game.phase = 'discussion';
-    const minutes = game.settings.discussionTimeoutMs / 60000;
+    game.skipVoters = new Set();
+    game.phaseEndsAt = Date.now() + game.settings.discussionTimeoutMs;
+    const seconds = Math.floor(game.settings.discussionTimeoutMs / 1000);
+
+    const skipRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('werewolf:skip')
+        .setLabel('スキップに同意')
+        .setStyle(ButtonStyle.Secondary),
+    );
 
     try {
       const channel = await client.channels.fetch(channelId);
       if (channel?.isTextBased()) {
-        await (channel as TextChannel).send(
-          `☀️ **昼フェーズ開始。** 自由に議論してください。\n${minutes}分後に投票フェーズへ移行します。`
-        );
+        await (channel as TextChannel).send({
+          content: `☀️ **昼フェーズ開始。** 自由に議論してください。\n${seconds}秒後に投票フェーズへ移行します。`,
+          components: [skipRow],
+        });
       }
     } catch (error) {
       console.error('Failed to send discussion message:', error);
@@ -268,6 +333,7 @@ class GameManager {
     game.discussionTimeout = setTimeout(async () => {
       await this.startVote(channelId, client);
     }, game.settings.discussionTimeoutMs);
+    this.scheduleCountdowns(game, channelId, client);
   }
 
   /** 投票フェーズを開始する */
@@ -275,30 +341,34 @@ class GameManager {
     const game = this.getGame(channelId);
     if (!game || game.phase !== 'discussion') return;
 
-    if (game.discussionTimeout) {
-      clearTimeout(game.discussionTimeout);
-      game.discussionTimeout = undefined;
-    }
+    this.clearPhaseTimeouts(game);
 
     game.phase = 'vote';
     game.votes = {};
+    game.skipVoters = new Set();
+    game.phaseEndsAt = Date.now() + game.settings.voteTimeoutMs;
+    const seconds = Math.floor(game.settings.voteTimeoutMs / 1000);
 
     const alivePlayers = game.players.filter(p => p.isAlive);
-    const minutes = game.settings.voteTimeoutMs / 60000;
-
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    const voteRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId('werewolf:vote')
         .setPlaceholder('処刑したいプレイヤーを選んでください')
         .addOptions(alivePlayers.map(p => ({ label: p.name, value: p.id }))),
+    );
+    const skipRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('werewolf:skip')
+        .setLabel('スキップに同意')
+        .setStyle(ButtonStyle.Secondary),
     );
 
     try {
       const channel = await client.channels.fetch(channelId);
       if (channel?.isTextBased()) {
         await (channel as TextChannel).send({
-          content: `🗳️ **投票フェーズ開始。** 処刑したいプレイヤーを選んでください。\n${minutes}分で締め切ります。`,
-          components: [row],
+          content: `🗳️ **投票フェーズ開始。** 処刑したいプレイヤーを選んでください。\n${seconds}秒で締め切ります。`,
+          components: [voteRow, skipRow],
         });
       }
     } catch (error) {
@@ -308,6 +378,7 @@ class GameManager {
     game.voteTimeout = setTimeout(async () => {
       await this.resolveVote(channelId, client);
     }, game.settings.voteTimeoutMs);
+    this.scheduleCountdowns(game, channelId, client);
   }
 
   /** 投票を集計して処刑フェーズを解決する */
@@ -315,10 +386,7 @@ class GameManager {
     const game = this.getGame(channelId);
     if (!game || game.phase !== 'vote') return;
 
-    if (game.voteTimeout) {
-      clearTimeout(game.voteTimeout);
-      game.voteTimeout = undefined;
-    }
+    this.clearPhaseTimeouts(game);
 
     game.phase = 'execution';
 

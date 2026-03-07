@@ -19,6 +19,9 @@ export class Game {
   public votes: Record<string, string> = {}; // voterId → targetId
   public voteTimeout?: ReturnType<typeof setTimeout>;
   public discussionTimeout?: ReturnType<typeof setTimeout>;
+  public phaseEndsAt?: number;               // 現フェーズ終了予定時刻（epoch ms）
+  public skipVoters: Set<string> = new Set();
+  public countdownTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   constructor(guildId: string, channelId: string, hostId: string, settings?: GameSettings) {
     this.id = randomUUID();
@@ -182,6 +185,24 @@ export class Game {
     entries.sort((a, b) => b[1] - a[1]);
     if (entries.length >= 2 && entries[0][1] === entries[1][1]) return null;
     return entries[0][0];
+  }
+
+  /** 現フェーズの残り時間（ミリ秒）を返す。タイマーがないフェーズでは null */
+  getRemainingMs(): number | null {
+    if (this.phaseEndsAt === undefined) return null;
+    return Math.max(0, this.phaseEndsAt - Date.now());
+  }
+
+  /** スキップ同意を登録。全員同意なら true を返す */
+  addSkipVote(playerId: string): boolean {
+    if (this.phase !== 'discussion' && this.phase !== 'vote') {
+      throw new Error('現在のフェーズではスキップできません。');
+    }
+    const player = this.players.find(p => p.id === playerId);
+    if (!player?.isAlive) throw new Error('あなたはスキップに投票できません。');
+    if (this.skipVoters.has(playerId)) throw new Error('すでにスキップに同意しています。');
+    this.skipVoters.add(playerId);
+    return this.skipVoters.size >= this.players.filter(p => p.isAlive).length;
   }
 
   private shuffle<T>(arr: T[]): T[] {

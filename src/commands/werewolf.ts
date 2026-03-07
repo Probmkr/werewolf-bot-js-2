@@ -54,6 +54,12 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub =>
     sub.setName('endall')
       .setDescription('このサーバーの全ゲームを強制終了します（管理者のみ）')
+  )
+  .addSubcommand(sub =>
+    sub.setName('time').setDescription('現在のフェーズの残り時間を確認します')
+  )
+  .addSubcommand(sub =>
+    sub.setName('skip').setDescription('フェーズのスキップに同意します（全員同意で即時進行）')
   );
 
 const lobbyRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -199,6 +205,27 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         gameManager.endGame(game.channelId);
         await interaction.reply(`ゲーム \`${game.id}\` を強制終了しました。`);
+        break;
+      }
+      case 'skip': {
+        const { message, allAgreed } = gameManager.submitSkipVote(channelId, user.id);
+        await interaction.reply(message);
+        if (allAgreed) await gameManager.advanceFromSkip(channelId, interaction.client);
+        break;
+      }
+      case 'time': {
+        const game = gameManager.getGame(channelId);
+        if (!game) {
+          await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const remaining = game.getRemainingMs();
+        if (remaining === null) {
+          await interaction.reply({ content: `現在のフェーズ（${PHASE_LABELS[game.phase] ?? game.phase}）にタイマーはありません。`, flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const totalSec = Math.ceil(remaining / 1000);
+        await interaction.reply({ content: `⏱️ ${PHASE_LABELS[game.phase] ?? game.phase}の残り時間: **${totalSec}秒**`, flags: MessageFlags.Ephemeral });
         break;
       }
       case 'endall': {
