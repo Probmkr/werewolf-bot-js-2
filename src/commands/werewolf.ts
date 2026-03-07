@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
   ChatInputCommandInteraction,
@@ -78,7 +79,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const user = interaction.user;
 
   if (!channelId || !guildId) {
-    await interaction.reply({ content: 'このコマンドはサーバー内でのみ使用できます。', ephemeral: true });
+    await interaction.reply({ content: 'このコマンドはサーバー内でのみ使用できます。', flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -105,7 +106,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       case 'join': {
         const game = gameManager.getGame(channelId);
         if (!game) {
-          await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+          await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', flags: MessageFlags.Ephemeral });
           return;
         }
         game.addPlayer({
@@ -119,7 +120,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       case 'leave': {
         const game = gameManager.getGame(channelId);
         if (!game) {
-          await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+          await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', flags: MessageFlags.Ephemeral });
           return;
         }
         game.removePlayer(user.id);
@@ -129,16 +130,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       case 'start': {
         const game = gameManager.getGame(channelId);
         if (!game) {
-          await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+          await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', flags: MessageFlags.Ephemeral });
           return;
         }
         if (game.hostId !== user.id) {
-          await interaction.reply({ content: 'ゲームを開始できるのはホストのみです。', ephemeral: true });
+          await interaction.reply({ content: 'ゲームを開始できるのはホストのみです。', flags: MessageFlags.Ephemeral });
           return;
         }
 
+        // DM 送信に時間がかかるため先に応答を遅延させる
+        await interaction.deferReply();
         await gameManager.startGame(channelId, interaction.client);
-        await interaction.reply('ゲームを開始しました！役職の配布が完了しました。夜フェーズを開始します。DMを確認してください。');
+        await interaction.editReply('ゲームを開始しました！役職の配布が完了しました。夜フェーズを開始します。DMを確認してください。');
         break;
       }
       case 'status': {
@@ -148,7 +151,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           : gameManager.getGame(channelId);
 
         if (!game) {
-          await interaction.reply({ content: 'ゲームが見つかりません。', ephemeral: true });
+          await interaction.reply({ content: 'ゲームが見つかりません。', flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -168,7 +171,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           lines.push(`**生存者:** ${names || 'なし'}`);
         }
 
-        await interaction.reply({ content: lines.join('\n'), ephemeral: true });
+        await interaction.reply({ content: lines.join('\n'), flags: MessageFlags.Ephemeral });
         break;
       }
       case 'end': {
@@ -178,11 +181,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           : gameManager.getGame(channelId);
 
         if (!game) {
-          await interaction.reply({ content: 'ゲームが見つかりません。', ephemeral: true });
+          await interaction.reply({ content: 'ゲームが見つかりません。', flags: MessageFlags.Ephemeral });
           return;
         }
         if (game.hostId !== user.id && !isAdmin) {
-          await interaction.reply({ content: 'ゲームを終了できるのはホストまたは管理者のみです。', ephemeral: true });
+          await interaction.reply({ content: 'ゲームを終了できるのはホストまたは管理者のみです。', flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -192,13 +195,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
       case 'endall': {
         if (!isAdmin) {
-          await interaction.reply({ content: 'このコマンドは管理者のみ使用できます。', ephemeral: true });
+          await interaction.reply({ content: 'このコマンドは管理者のみ使用できます。', flags: MessageFlags.Ephemeral });
           return;
         }
 
         const games = gameManager.getGamesByGuild(guildId);
         if (games.length === 0) {
-          await interaction.reply({ content: 'このサーバーで進行中のゲームはありません。', ephemeral: true });
+          await interaction.reply({ content: 'このサーバーで進行中のゲームはありません。', flags: MessageFlags.Ephemeral });
           return;
         }
 
@@ -211,6 +214,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-    await interaction.reply({ content: `エラー: ${errorMessage}`, ephemeral: true }).catch(() => interaction.followUp({ content: `エラー: ${errorMessage}`, ephemeral: true }));
+    await interaction.reply({ content: `エラー: ${errorMessage}`, flags: MessageFlags.Ephemeral }).catch(() => interaction.followUp({ content: `エラー: ${errorMessage}`, flags: MessageFlags.Ephemeral }));
   }
 }

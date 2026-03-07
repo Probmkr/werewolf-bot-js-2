@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 
 import { env } from './env.js';
 import { commandMap } from './commands/index.js';
@@ -17,6 +17,10 @@ client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
 });
 
+client.on(Events.Error, (error) => {
+  console.error('[Discord Client Error]', error);
+});
+
 client.on(Events.InteractionCreate, async (interaction) => {
   // ボタンインタラクション
   if (interaction.isButton()) {
@@ -29,7 +33,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
       const game = gameManager.getGame(channelId);
       if (!game) {
-        await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', ephemeral: true });
+        await interaction.reply({ content: 'このチャンネルでゲームは開催されていません。', flags: MessageFlags.Ephemeral });
         return;
       }
       if (action === 'join') {
@@ -41,7 +45,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-      await interaction.reply({ content: `エラー: ${errorMessage}`, ephemeral: true });
+      await interaction.reply({ content: `エラー: ${errorMessage}`, flags: MessageFlags.Ephemeral });
     }
     return;
   }
@@ -55,21 +59,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const game = gameManager.getGameByPlayerId(user.id);
 
     if (!game || game.phase !== 'night') {
-      await interaction.reply({ content: 'このインタラクションは現在有効ではありません。', ephemeral: true });
+      await interaction.reply({ content: 'このインタラクションは現在有効ではありません。', flags: MessageFlags.Ephemeral });
       return;
     }
 
     try {
       const targetId = interaction.values[0];
       game.submitNightAction(user.id, actionType as 'attack' | 'inspect' | 'guard', targetId);
-      await interaction.reply({ content: '✅ 行動を受け付けました。', ephemeral: true });
+      await interaction.reply({ content: '✅ 行動を受け付けました。', flags: MessageFlags.Ephemeral });
 
       if (game.hasAllNightActions()) {
         await gameManager.resolveNight(game.channelId, interaction.client);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-      await interaction.reply({ content: `エラー: ${errorMessage}`, ephemeral: true });
+      await interaction.reply({ content: `エラー: ${errorMessage}`, flags: MessageFlags.Ephemeral });
     }
     return;
   }
@@ -78,7 +82,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const command = commandMap.get(interaction.commandName);
   if (!command) {
-    await interaction.reply({ content: 'Unknown command.', ephemeral: true });
+    await interaction.reply({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -88,9 +92,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     console.error(err);
     const content = 'An error occurred while executing this command.';
     if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ content, ephemeral: true });
+      await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
     } else {
-      await interaction.reply({ content, ephemeral: true });
+      await interaction.reply({ content, flags: MessageFlags.Ephemeral });
     }
   }
 });
