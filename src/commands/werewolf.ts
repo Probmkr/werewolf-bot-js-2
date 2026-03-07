@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  PermissionFlagsBits,
   SlashCommandBuilder,
   ChatInputCommandInteraction,
 } from 'discord.js';
@@ -24,6 +25,28 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub.setName('start').setDescription('ゲームを開始します')
+  )
+  .addSubcommand(sub =>
+    sub.setName('status')
+      .setDescription('ゲームの現在状況を表示します')
+      .addStringOption(opt =>
+        opt.setName('game_id')
+          .setDescription('確認するゲームのID（省略時はこのチャンネルのゲーム）')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub.setName('end')
+      .setDescription('ゲームを強制終了します（ホストまたは管理者のみ）')
+      .addStringOption(opt =>
+        opt.setName('game_id')
+          .setDescription('終了するゲームのID（省略時はこのチャンネルのゲーム）')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub.setName('endall')
+      .setDescription('このサーバーの全ゲームを強制終了します（管理者のみ）')
   );
 
 const lobbyRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -37,6 +60,17 @@ const lobbyRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     .setStyle(ButtonStyle.Secondary),
 );
 
+const PHASE_LABELS: Record<string, string> = {
+  lobby:      'ロビー',
+  roleAssign: '役職配布中',
+  night:      '夜',
+  morning:    '朝',
+  discussion: '昼（議論）',
+  vote:       '投票',
+  execution:  '処刑',
+  end:        '終了',
+};
+
 export async function execute(interaction: ChatInputCommandInteraction) {
   const subcommand = interaction.options.getSubcommand();
   const channelId = interaction.channelId;
@@ -48,6 +82,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
+
   try {
     switch (subcommand) {
       case 'ping': {
@@ -55,9 +91,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         break;
       }
       case 'create': {
-        gameManager.createGame(channelId, guildId, user.id);
+        const game = gameManager.createGame(channelId, guildId, user.id);
         await interaction.reply({
-          content: `ゲームを作成しました！参加者はボタンまたは \`/werewolf join\` で参加してください。\nホスト: ${user.toString()}`,
+          content: [
+            `ゲームを作成しました！参加者はボタンまたは \`/werewolf join\` で参加してください。`,
+            `ホスト: ${user.toString()}`,
+            `ゲームID: \`${game.id}\``,
+          ].join('\n'),
           components: [lobbyRow],
         });
         break;
@@ -99,6 +139,73 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         await gameManager.startGame(channelId, interaction.client);
         await interaction.reply('ゲームを開始しました！役職の配布が完了しました。夜フェーズを開始します。DMを確認してください。');
+        break;
+      }
+      case 'status': {
+        const gameId = interaction.options.getString('game_id');
+        const game = gameId
+          ? gameManager.getGameById(gameId)
+          : gameManager.getGame(channelId);
+
+        if (!game) {
+          await interaction.reply({ content: 'ゲームが見つかりません。', ephemeral: true });
+          return;
+        }
+
+        const alivePlayers = game.players.filter(p => p.isAlive);
+        const lines = [
+          `**ゲームID:** \`${game.id}\``,
+          `**フェーズ:** ${PHASE_LABELS[game.phase] ?? game.phase}`,
+          `**日数:** ${game.dayNumber}日目`,
+          `**参加者:** ${game.players.length}人 (生存: ${alivePlayers.length}人)`,
+          `**ホスト:** <@${game.hostId}>`,
+        ];
+        if (game.phase === 'lobby') {
+          const names = game.players.map(p => p.name).join('、');
+          lines.push(`**参加者一覧:** ${names || 'なし'}`);
+        } else {
+          const names = alivePlayers.map(p => p.name).join('、');
+          lines.push(`**生存者:** ${names || 'なし'}`);
+        }
+
+        await interaction.reply({ content: lines.join('\n'), ephemeral: true });
+        break;
+      }
+      case 'end': {
+        const gameId = interaction.options.getString('game_id');
+        const game = gameId
+          ? gameManager.getGameById(gameId)
+          : gameManager.getGame(channelId);
+
+        if (!game) {
+          await interaction.reply({ content: 'ゲームが見つかりません。', ephemeral: true });
+          return;
+        }
+        if (game.hostId !== user.id && !isAdmin) {
+          await interaction.reply({ content: 'ゲームを終了できるのはホストまたは管理者のみです。', ephemeral: true });
+          return;
+        }
+
+        gameManager.endGame(game.channelId);
+        await interaction.reply(`ゲーム \`${game.id}\` を強制終了しました。`);
+        break;
+      }
+      case 'endall': {
+        if (!isAdmin) {
+          await interaction.reply({ content: 'このコマンドは管理者のみ使用できます。', ephemeral: true });
+          return;
+        }
+
+        const games = gameManager.getGamesByGuild(guildId);
+        if (games.length === 0) {
+          await interaction.reply({ content: 'このサーバーで進行中のゲームはありません。', ephemeral: true });
+          return;
+        }
+
+        for (const game of games) {
+          gameManager.endGame(game.channelId);
+        }
+        await interaction.reply(`このサーバーの全ゲーム (${games.length}件) を強制終了しました。`);
         break;
       }
     }

@@ -17,6 +17,17 @@ class GameManager {
     return this.games.get(channelId);
   }
 
+  getGameById(gameId: string): Game | undefined {
+    for (const game of this.games.values()) {
+      if (game.id === gameId) return game;
+    }
+    return undefined;
+  }
+
+  getGamesByGuild(guildId: string): Game[] {
+    return [...this.games.values()].filter(g => g.guildId === guildId);
+  }
+
   endGame(channelId: string): void {
     this.games.delete(channelId);
   }
