@@ -16,6 +16,12 @@ export interface GameSettings {
     anonymousVote: boolean;
 }
 
+export interface NightActions {
+  attack?: string;   // 人狼が選んだ襲撃対象の player ID
+  inspect?: string;  // 占い師が選んだ占い対象の player ID
+  guard?: string;    // 狩人が選んだ護衛対象の player ID
+}
+
 export interface Game {
     id: string;
     guildId: string;
@@ -25,7 +31,7 @@ export interface Game {
     phase: GamePhase;
     dayNumber: number;
     settings: GameSettings;
-    nightActions: any; // Define properly later
+    nightActions: NightActions;
     voteResults: any; // Define properly later
     logs: string[];
 }

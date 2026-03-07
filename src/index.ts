@@ -46,6 +46,34 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
+  // 夜行動セレクトメニューインタラクション（DM 経由）
+  if (interaction.isStringSelectMenu()) {
+    const [namespace, category, actionType] = interaction.customId.split(':');
+    if (namespace !== 'werewolf' || category !== 'night') return;
+
+    const user = interaction.user;
+    const game = gameManager.getGameByPlayerId(user.id);
+
+    if (!game || game.phase !== 'night') {
+      await interaction.reply({ content: 'このインタラクションは現在有効ではありません。', ephemeral: true });
+      return;
+    }
+
+    try {
+      const targetId = interaction.values[0];
+      game.submitNightAction(user.id, actionType as 'attack' | 'inspect' | 'guard', targetId);
+      await interaction.reply({ content: '✅ 行動を受け付けました。', ephemeral: true });
+
+      if (game.hasAllNightActions()) {
+        await gameManager.resolveNight(game.channelId, interaction.client);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+      await interaction.reply({ content: `エラー: ${errorMessage}`, ephemeral: true });
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const command = commandMap.get(interaction.commandName);

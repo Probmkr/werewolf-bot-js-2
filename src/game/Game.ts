@@ -1,6 +1,6 @@
 
 import { randomUUID } from 'node:crypto';
-import { Game as GameData, GameSettings } from './models/Game.js';
+import { Game as GameData, GameSettings, NightActions } from './models/Game.js';
 import { Player } from './models/Player.js';
 import { DEFAULT_GAME_SETTINGS } from '../config.js';
 import { createRole } from './roles/index.js';
@@ -14,6 +14,8 @@ export class Game {
   public phase: GameData['phase'] = 'lobby';
   public dayNumber = 0;
   public settings: GameSettings;
+  public nightActions: NightActions = {};
+  public nightActionTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(guildId: string, channelId: string, hostId: string, settings?: GameSettings) {
     this.id = randomUUID();
@@ -99,6 +101,36 @@ export class Game {
     this.players.forEach((player, index) => {
       player.role = createRole(finalRoles[index]);
     });
+  }
+
+  /** 夜フェーズ中に行動者が対象を選択して送信する */
+  submitNightAction(actorId: string, actionType: 'attack' | 'inspect' | 'guard', targetId: string): void {
+    if (this.phase !== 'night') throw new Error('夜フェーズではありません。');
+
+    const actor = this.players.find(p => p.id === actorId);
+    if (!actor?.isAlive) throw new Error('あなたは行動できません。');
+    if (!actor.role) throw new Error('役職が割り当てられていません。');
+    if (actor.role.nightActionType !== actionType) throw new Error('この行動はあなたの役職では使用できません。');
+    if (!actor.role.canActAt(this.dayNumber)) throw new Error('今夜は行動できません。');
+
+    const target = this.players.find(p => p.id === targetId);
+    if (!target?.isAlive) throw new Error('対象のプレイヤーは存在しないか、すでに死亡しています。');
+    if (targetId === actorId) throw new Error('自分自身を対象にすることはできません。');
+
+    this.nightActions[actionType] = targetId;
+  }
+
+  /** 今夜行動が必要なすべてのアクションが揃っているか確認する */
+  hasAllNightActions(): boolean {
+    const alive = this.players.filter(p => p.isAlive);
+    const needsAttack = alive.some(p => p.role?.nightActionType === 'attack');
+    const needsInspect = alive.some(p => p.role?.nightActionType === 'inspect' && p.role.canActAt(this.dayNumber));
+    const needsGuard = alive.some(p => p.role?.nightActionType === 'guard' && p.role.canActAt(this.dayNumber));
+
+    if (needsAttack && !this.nightActions.attack) return false;
+    if (needsInspect && !this.nightActions.inspect) return false;
+    if (needsGuard && !this.nightActions.guard) return false;
+    return true;
   }
 
   private shuffle<T>(arr: T[]): T[] {

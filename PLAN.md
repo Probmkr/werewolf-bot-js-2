@@ -17,7 +17,7 @@ content: ロビー〜役職配布までのフロー（/werewolf create, /werewol
 status: done
 - id: implement-night-input
 content: 夜フェーズ開始時に行動者（人狼・占い師・狩人）へ DM でセレクトメニューを送り、回答を nightActions に保存するまでの入力収集ロジックを実装する
-status: pending
+status: done
 - id: implement-night-resolve
 content: resolveNight() を実装する。護衛→襲撃判定・占い師への結果DM・霊媒師へのパッシブ通知を含む各役職の夜行動ロジックをまとめて解決する
 status: pending
@@ -279,7 +279,7 @@ stateDiagram-v2
 3. ✅ **ロビー〜役職配布までの実装** (`implement-lobby-flow`)
   - `/werewolf create`, `/werewolf join`, `/werewolf start` を実装し、役職配布と DM 通知を実装。
   - ロビーボタン（参加する・退出する）、人狼への仲間通知も含む。
-4. **夜行動の入力収集** (`implement-night-input`)
+4. ✅ **夜行動の入力収集** (`implement-night-input`)
   - 夜フェーズ開始時に行動者（人狼・占い師・狩人）へ DM でセレクトメニューを送信。
   - 回答を `nightActions` に保存し、全員確定またはタイムアウトで解決フェーズへ。
 5. **夜行動の解決と役職ロジック** (`implement-night-resolve`)
