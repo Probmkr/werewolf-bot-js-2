@@ -16,6 +16,8 @@ export interface GameSettings {
     anonymousVote: boolean;
     debugMode: boolean;
     nightActionTimeoutMs: number;
+    discussionTimeoutMs: number;
+    voteTimeoutMs: number;
 }
 
 export interface NightActions {

@@ -50,32 +50,61 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // 夜行動セレクトメニューインタラクション（DM 経由）
+  // セレクトメニューインタラクション
   if (interaction.isStringSelectMenu()) {
     const [namespace, category, actionType] = interaction.customId.split(':');
-    if (namespace !== 'werewolf' || category !== 'night') return;
+    if (namespace !== 'werewolf') return;
 
     const user = interaction.user;
-    const game = gameManager.getGameByPlayerId(user.id);
 
-    if (!game || game.phase !== 'night') {
-      await interaction.reply({ content: 'このインタラクションは現在有効ではありません。', flags: MessageFlags.Ephemeral });
+    // 夜行動（DM 経由）
+    if (category === 'night') {
+      const game = gameManager.getGameByPlayerId(user.id);
+
+      if (!game || game.phase !== 'night') {
+        await interaction.reply({ content: 'このインタラクションは現在有効ではありません。', flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      try {
+        const targetId = interaction.values[0];
+        game.submitNightAction(user.id, actionType as 'attack' | 'inspect' | 'guard', targetId);
+        await interaction.reply({ content: '✅ 行動を受け付けました。', flags: MessageFlags.Ephemeral });
+
+        if (game.hasAllNightActions()) {
+          await gameManager.resolveNight(game.channelId, interaction.client);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+        await interaction.reply({ content: `エラー: ${errorMessage}`, flags: MessageFlags.Ephemeral });
+      }
       return;
     }
 
-    try {
-      const targetId = interaction.values[0];
-      game.submitNightAction(user.id, actionType as 'attack' | 'inspect' | 'guard', targetId);
-      await interaction.reply({ content: '✅ 行動を受け付けました。', flags: MessageFlags.Ephemeral });
+    // 投票（チャンネル経由）
+    if (category === 'vote') {
+      const game = gameManager.getGame(interaction.channelId);
 
-      if (game.hasAllNightActions()) {
-        await gameManager.resolveNight(game.channelId, interaction.client);
+      if (!game || game.phase !== 'vote') {
+        await interaction.reply({ content: 'このインタラクションは現在有効ではありません。', flags: MessageFlags.Ephemeral });
+        return;
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-      await interaction.reply({ content: `エラー: ${errorMessage}`, flags: MessageFlags.Ephemeral });
+
+      try {
+        const targetId = interaction.values[0];
+        game.submitVote(user.id, targetId);
+        const targetName = game.players.find(p => p.id === targetId)?.name ?? targetId;
+        await interaction.reply({ content: `✅ **${targetName}** に投票しました。（締切前に再選択で変更できます）`, flags: MessageFlags.Ephemeral });
+
+        if (game.hasAllVotes()) {
+          await gameManager.resolveVote(game.channelId, interaction.client);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+        await interaction.reply({ content: `エラー: ${errorMessage}`, flags: MessageFlags.Ephemeral });
+      }
+      return;
     }
-    return;
   }
 
   if (!interaction.isChatInputCommand()) return;

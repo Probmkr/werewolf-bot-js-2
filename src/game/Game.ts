@@ -16,6 +16,9 @@ export class Game {
   public settings: GameSettings;
   public nightActions: NightActions = {};
   public nightActionTimeout?: ReturnType<typeof setTimeout>;
+  public votes: Record<string, string> = {}; // voterId → targetId
+  public voteTimeout?: ReturnType<typeof setTimeout>;
+  public discussionTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(guildId: string, channelId: string, hostId: string, settings?: GameSettings) {
     this.id = randomUUID();
@@ -148,6 +151,37 @@ export class Game {
     if (aliveWolves.length === 0) return 'village';
     if (aliveWolves.length >= aliveNonWolves.length) return 'wolf';
     return null;
+  }
+
+  /** 投票フェーズ中に投票先を登録する（再投票で上書き可） */
+  submitVote(voterId: string, targetId: string): void {
+    if (this.phase !== 'vote') throw new Error('投票フェーズではありません。');
+    const voter = this.players.find(p => p.id === voterId);
+    if (!voter?.isAlive) throw new Error('あなたは投票できません。');
+    const target = this.players.find(p => p.id === targetId);
+    if (!target?.isAlive) throw new Error('対象のプレイヤーは存在しないか、すでに死亡しています。');
+    this.votes[voterId] = targetId;
+  }
+
+  /** 生存者全員が投票済みか確認する */
+  hasAllVotes(): boolean {
+    return this.players.filter(p => p.isAlive).every(p => this.votes[p.id] !== undefined);
+  }
+
+  /**
+   * 投票を集計して処刑対象の player ID を返す。
+   * 同票の場合は null（処刑なし）。
+   */
+  tallyVotes(): string | null {
+    const counts: Record<string, number> = {};
+    for (const targetId of Object.values(this.votes)) {
+      counts[targetId] = (counts[targetId] ?? 0) + 1;
+    }
+    const entries = Object.entries(counts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    if (entries.length >= 2 && entries[0][1] === entries[1][1]) return null;
+    return entries[0][0];
   }
 
   private shuffle<T>(arr: T[]): T[] {

@@ -240,6 +240,152 @@ class GameManager {
     }
 
     game.nightActions = {};
+
+    if (game.phase === 'morning') {
+      await this.startDiscussion(channelId, client);
+    }
+  }
+
+  /** 昼議論フェーズを開始する */
+  async startDiscussion(channelId: string, client: Client): Promise<void> {
+    const game = this.getGame(channelId);
+    if (!game) return;
+
+    game.phase = 'discussion';
+    const minutes = game.settings.discussionTimeoutMs / 60000;
+
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isTextBased()) {
+        await (channel as TextChannel).send(
+          `☀️ **昼フェーズ開始。** 自由に議論してください。\n${minutes}分後に投票フェーズへ移行します。`
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send discussion message:', error);
+    }
+
+    game.discussionTimeout = setTimeout(async () => {
+      await this.startVote(channelId, client);
+    }, game.settings.discussionTimeoutMs);
+  }
+
+  /** 投票フェーズを開始する */
+  async startVote(channelId: string, client: Client): Promise<void> {
+    const game = this.getGame(channelId);
+    if (!game || game.phase !== 'discussion') return;
+
+    if (game.discussionTimeout) {
+      clearTimeout(game.discussionTimeout);
+      game.discussionTimeout = undefined;
+    }
+
+    game.phase = 'vote';
+    game.votes = {};
+
+    const alivePlayers = game.players.filter(p => p.isAlive);
+    const minutes = game.settings.voteTimeoutMs / 60000;
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('werewolf:vote')
+        .setPlaceholder('処刑したいプレイヤーを選んでください')
+        .addOptions(alivePlayers.map(p => ({ label: p.name, value: p.id }))),
+    );
+
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isTextBased()) {
+        await (channel as TextChannel).send({
+          content: `🗳️ **投票フェーズ開始。** 処刑したいプレイヤーを選んでください。\n${minutes}分で締め切ります。`,
+          components: [row],
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send vote message:', error);
+    }
+
+    game.voteTimeout = setTimeout(async () => {
+      await this.resolveVote(channelId, client);
+    }, game.settings.voteTimeoutMs);
+  }
+
+  /** 投票を集計して処刑フェーズを解決する */
+  async resolveVote(channelId: string, client: Client): Promise<void> {
+    const game = this.getGame(channelId);
+    if (!game || game.phase !== 'vote') return;
+
+    if (game.voteTimeout) {
+      clearTimeout(game.voteTimeout);
+      game.voteTimeout = undefined;
+    }
+
+    game.phase = 'execution';
+
+    // [DEBUG] 個別投票内容
+    const voteDebugLines = Object.entries(game.votes).map(([voterId, targetId]) => {
+      const voter = game.players.find(p => p.id === voterId)?.name ?? voterId;
+      const target = game.players.find(p => p.id === targetId)?.name ?? targetId;
+      return `${voter} → ${target}`;
+    });
+    await this.sendDebug(game, client, `投票内容 (${game.dayNumber}日目):\n${voteDebugLines.join('\n') || 'なし'}`);
+
+    const executedId = game.tallyVotes();
+    const executed = executedId ? game.players.find(p => p.id === executedId) : undefined;
+    if (executed) executed.isAlive = false;
+
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isTextBased()) {
+        const ch = channel as TextChannel;
+
+        // 非匿名投票: 投票先を公開
+        if (!game.settings.anonymousVote && Object.keys(game.votes).length > 0) {
+          const lines = Object.entries(game.votes).map(([voterId, targetId]) => {
+            const voter = game.players.find(p => p.id === voterId)?.name ?? voterId;
+            const target = game.players.find(p => p.id === targetId)?.name ?? targetId;
+            return `・${voter} → ${target}`;
+          });
+          await ch.send(`📋 投票結果:\n${lines.join('\n')}`);
+        }
+
+        // 処刑結果
+        if (executed) {
+          await ch.send(`⚖️ 投票の結果、**${executed.name}** が処刑されました。`);
+
+          // 霊能者への処刑結果通知
+          const medium = game.players.find(p => p.role?.id === 'medium' && p.isAlive);
+          if (medium) {
+            try {
+              const mediumUser = await client.users.fetch(medium.id);
+              await mediumUser.send(`🔭 霊能結果: **${executed.name}** は **${executed.role?.name ?? '不明'}** でした。`);
+            } catch (error) {
+              console.error('Failed to send medium notification:', error);
+            }
+          }
+        } else {
+          await ch.send(`⚖️ 投票が同票のため、今日は処刑なしです。`);
+        }
+
+        // 勝敗判定
+        const winner = game.checkWinConditions();
+        if (winner) {
+          const winnerLabel = winner === 'wolf' ? '人狼' : '村人';
+          await ch.send(`🎉 ゲーム終了！ **${winnerLabel}陣営** の勝利です！`);
+          game.phase = 'end';
+        } else {
+          game.dayNumber++;
+          game.phase = 'night';
+          game.nightActions = {};
+          await ch.send(`🌙 **${game.dayNumber}日目の夜になりました。** 行動者はDMを確認してください。`);
+          await this.sendNightDMs(channelId, client);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to resolve vote:', error);
+    }
+
+    game.votes = {};
   }
 }
 
