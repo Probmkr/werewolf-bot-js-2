@@ -34,7 +34,7 @@ const shuffledRoles = [...this.settings.roles].sort(() => Math.random() - 0.5);
 Fisher-Yates アルゴリズムを使うべき。
 (人狼ゲームでは役職分布の公平性が重要)
 
-### 3. GameManager.createGame の Game コンストラクタ呼び出しが冗長
+### 3. ~~GameManager.createGame の Game コンストラクタ呼び出しが冗長~~ ✅ 修正済み
 **場所:** `src/game/GameManager.ts:12`
 
 ```typescript

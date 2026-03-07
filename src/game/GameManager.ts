@@ -9,7 +9,7 @@ class GameManager {
         if (this.games.has(channelId)) {
             throw new Error('このチャンネルには既に進行中のゲームがあります。');
         }
-        const game = new Game(channelId, guildId, channelId, hostId);
+        const game = new Game(guildId, channelId, hostId);
         this.games.set(channelId, game);
         return game;
     }
