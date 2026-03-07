@@ -192,7 +192,6 @@ class GameManager {
     const game = this.getGame(channelId);
     if (!game) return;
     if (game.phase === 'discussion') await this.startVote(channelId, client);
-    else if (game.phase === 'vote') await this.resolveVote(channelId, client);
   }
 
   /** プレイヤー ID からゲームを取得する（DM インタラクションの紐付けに使用） */
@@ -345,7 +344,6 @@ class GameManager {
 
     game.phase = 'vote';
     game.votes = {};
-    game.skipVoters = new Set();
     game.phaseEndsAt = Date.now() + game.settings.voteTimeoutMs;
     const seconds = Math.floor(game.settings.voteTimeoutMs / 1000);
 
@@ -356,19 +354,12 @@ class GameManager {
         .setPlaceholder('処刑したいプレイヤーを選んでください')
         .addOptions(alivePlayers.map(p => ({ label: p.name, value: p.id }))),
     );
-    const skipRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('werewolf:skip')
-        .setLabel('スキップに同意')
-        .setStyle(ButtonStyle.Secondary),
-    );
-
     try {
       const channel = await client.channels.fetch(channelId);
       if (channel?.isTextBased()) {
         await (channel as TextChannel).send({
           content: `🗳️ **投票フェーズ開始。** 処刑したいプレイヤーを選んでください。\n${seconds}秒で締め切ります。`,
-          components: [voteRow, skipRow],
+          components: [voteRow],
         });
       }
     } catch (error) {

@@ -195,7 +195,7 @@ export class Game {
 
   /** スキップ同意を登録。全員同意なら true を返す */
   addSkipVote(playerId: string): boolean {
-    if (this.phase !== 'discussion' && this.phase !== 'vote') {
+    if (this.phase !== 'discussion') {
       throw new Error('現在のフェーズではスキップできません。');
     }
     const player = this.players.find(p => p.id === playerId);
