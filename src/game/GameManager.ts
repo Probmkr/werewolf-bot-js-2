@@ -6,18 +6,31 @@ import {
 } from 'discord.js';
 import { Game } from './Game.js';
 import type { NightActionType } from './roles/Role.js';
-import { NIGHT_ACTION_TIMEOUT_MS } from '../config.js';
+import { DEFAULT_GAME_SETTINGS, NIGHT_ACTION_TIMEOUT_MS } from '../config.js';
 
 class GameManager {
   private games: Map<string, Game> = new Map();
 
-  createGame(channelId: string, guildId: string, hostId: string): Game {
+  createGame(channelId: string, guildId: string, hostId: string, debugMode = false): Game {
     if (this.games.has(channelId)) {
       throw new Error('このチャンネルには既に進行中のゲームがあります。');
     }
-    const game = new Game(guildId, channelId, hostId);
+    const game = new Game(guildId, channelId, hostId, debugMode ? { ...DEFAULT_GAME_SETTINGS, roles: [...DEFAULT_GAME_SETTINGS.roles], debugMode: true } : undefined);
     this.games.set(channelId, game);
     return game;
+  }
+
+  /** デバッグモードが有効なときのみチャンネルにログを送信する */
+  private async sendDebug(game: Game, client: Client, content: string): Promise<void> {
+    if (!game.settings.debugMode) return;
+    try {
+      const channel = await client.channels.fetch(game.channelId);
+      if (channel?.isTextBased()) {
+        await (channel as TextChannel).send(`\`\`\`\n[DEBUG] ${content}\n\`\`\``);
+      }
+    } catch (error) {
+      console.error('Failed to send debug message:', error);
+    }
   }
 
   getGame(channelId: string): Game | undefined {
@@ -70,6 +83,11 @@ class GameManager {
     });
 
     await Promise.all(notifications);
+
+    // [DEBUG] 役職配布一覧
+    const roleList = game.players.map(p => `${p.name} → ${p.role?.name ?? '?'} (${p.role?.team ?? '?'})`).join('\n');
+    await this.sendDebug(game, client, `役職配布 (${game.dayNumber}日目開始):\n${roleList}`);
+
     await this.sendNightDMs(channelId, client);
   }
 
@@ -140,6 +158,15 @@ class GameManager {
     if (game.nightActionTimeout) {
       clearTimeout(game.nightActionTimeout);
       game.nightActionTimeout = undefined;
+    }
+
+    // [DEBUG] 夜行動の内容を表示
+    {
+      const { attack, inspect, guard } = game.nightActions;
+      const attackName = attack ? (game.players.find(p => p.id === attack)?.name ?? attack) : 'なし';
+      const inspectName = inspect ? (game.players.find(p => p.id === inspect)?.name ?? inspect) : 'なし';
+      const guardName = guard ? (game.players.find(p => p.id === guard)?.name ?? guard) : 'なし';
+      await this.sendDebug(game, client, `夜行動 (${game.dayNumber}日目夜):\n・襲撃: ${attackName}\n・護衛: ${guardName}\n・占い: ${inspectName}`);
     }
 
     // 1. 護衛 → 襲撃判定

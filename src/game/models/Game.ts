@@ -14,6 +14,7 @@ export type GamePhase =
 export interface GameSettings {
     roles: string[];
     anonymousVote: boolean;
+    debugMode: boolean;
 }
 
 export interface NightActions {

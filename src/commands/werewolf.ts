@@ -16,7 +16,13 @@ export const data = new SlashCommandBuilder()
     sub.setName('ping').setDescription('Botの生存確認を行います')
   )
   .addSubcommand(sub =>
-    sub.setName('create').setDescription('新しいゲームを作成します')
+    sub.setName('create')
+      .setDescription('新しいゲームを作成します')
+      .addBooleanOption(opt =>
+        opt.setName('debug')
+          .setDescription('デバッグモード（役職・行動をチャンネルに公開）')
+          .setRequired(false)
+      )
   )
   .addSubcommand(sub =>
     sub.setName('join').setDescription('ゲームに参加します')
@@ -92,12 +98,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         break;
       }
       case 'create': {
-        const game = gameManager.createGame(channelId, guildId, user.id);
+        const debug = interaction.options.getBoolean('debug') ?? false;
+        const game = gameManager.createGame(channelId, guildId, user.id, debug);
         await interaction.reply({
           content: [
             `ゲームを作成しました！参加者はボタンまたは \`/werewolf join\` で参加してください。`,
             `ホスト: ${user.toString()}`,
             `ゲームID: \`${game.id}\``,
+            ...(debug ? ['⚠️ デバッグモード: 役職・行動がチャンネルに公開されます'] : []),
           ].join('\n'),
           components: [lobbyRow],
         });
