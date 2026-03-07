@@ -6,7 +6,7 @@ import {
 } from 'discord.js';
 import { Game } from './Game.js';
 import type { NightActionType } from './roles/Role.js';
-import { DEFAULT_GAME_SETTINGS, NIGHT_ACTION_TIMEOUT_MS } from '../config.js';
+import { DEFAULT_GAME_SETTINGS } from '../config.js';
 
 class GameManager {
   private games: Map<string, Game> = new Map();
@@ -137,7 +137,7 @@ class GameManager {
     // 全員確定またはタイムアウトで夜を解決する
     game.nightActionTimeout = setTimeout(async () => {
       await this.resolveNight(channelId, client);
-    }, NIGHT_ACTION_TIMEOUT_MS);
+    }, game.settings.nightActionTimeoutMs);
   }
 
   /** プレイヤー ID からゲームを取得する（DM インタラクションの紐付けに使用） */

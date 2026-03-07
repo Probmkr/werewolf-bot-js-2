@@ -15,6 +15,7 @@ export interface GameSettings {
     roles: string[];
     anonymousVote: boolean;
     debugMode: boolean;
+    nightActionTimeoutMs: number;
 }
 
 export interface NightActions {
