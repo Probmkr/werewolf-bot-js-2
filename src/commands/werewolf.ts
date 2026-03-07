@@ -97,9 +97,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return;
         }
 
-        await interaction.reply('ゲームを開始します！役職を配布しています...');
         await gameManager.startGame(channelId, interaction.client);
-        await interaction.followUp('役職の配布が完了しました。夜フェーズを開始します。DMを確認してください。');
+        await interaction.reply('ゲームを開始しました！役職の配布が完了しました。夜フェーズを開始します。DMを確認してください。');
         break;
       }
     }
