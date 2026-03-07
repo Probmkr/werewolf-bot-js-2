@@ -51,7 +51,7 @@ const game = new Game(channelId, guildId, channelId, hostId);
 
 ## 🔵 Low (軽微・命名・一貫性)
 
-### 4. Villager の `name` が不統一
+### 4. ~~Villager の `name` が不統一~~ ✅ 修正済み
 **場所:** `src/game/roles/Villager.ts:5`
 
 ```typescript
