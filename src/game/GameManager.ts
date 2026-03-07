@@ -1,6 +1,5 @@
 import { Client } from 'discord.js';
 import { Game } from './Game.js';
-import { Player } from './models/Player.js';
 
 class GameManager {
   private games: Map<string, Game> = new Map();
@@ -28,13 +27,25 @@ class GameManager {
 
     game.start();
 
-    // 役職通知
+    const werewolves = game.players.filter(p => p.role?.team === 'wolf');
+
     const notifications = game.players.map(async (player) => {
       try {
         const user = await client.users.fetch(player.id);
-        if (player.role) {
-          await user.send(`あなたの役職は **${player.role.name}** です。\n陣営: ${player.role.team}`);
+        if (!player.role) return;
+
+        let dmContent = `あなたの役職は **${player.role.name}** です。\n陣営: ${player.role.team}`;
+
+        // 人狼には仲間一覧を通知
+        if (player.role.team === 'wolf' && werewolves.length > 1) {
+          const allies = werewolves
+            .filter(w => w.id !== player.id)
+            .map(w => w.name)
+            .join('、');
+          dmContent += `\n\n仲間の人狼: **${allies}**`;
         }
+
+        await user.send(dmContent);
       } catch (error) {
         console.error(`Failed to send DM to ${player.name}:`, error);
       }

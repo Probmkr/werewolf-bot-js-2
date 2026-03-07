@@ -1,4 +1,10 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+} from 'discord.js';
 import { gameManager } from '../game/GameManager.js';
 
 export const data = new SlashCommandBuilder()
@@ -20,6 +26,17 @@ export const data = new SlashCommandBuilder()
     sub.setName('start').setDescription('ゲームを開始します')
   );
 
+const lobbyRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  new ButtonBuilder()
+    .setCustomId('werewolf:join')
+    .setLabel('参加する')
+    .setStyle(ButtonStyle.Primary),
+  new ButtonBuilder()
+    .setCustomId('werewolf:leave')
+    .setLabel('退出する')
+    .setStyle(ButtonStyle.Secondary),
+);
+
 export async function execute(interaction: ChatInputCommandInteraction) {
   const subcommand = interaction.options.getSubcommand();
   const channelId = interaction.channelId;
@@ -39,7 +56,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
       case 'create': {
         gameManager.createGame(channelId, guildId, user.id);
-        await interaction.reply(`ゲームを作成しました！参加者は \`/werewolf join\` で参加してください。\nホスト: ${user.toString()}`);
+        await interaction.reply({
+          content: `ゲームを作成しました！参加者はボタンまたは \`/werewolf join\` で参加してください。\nホスト: ${user.toString()}`,
+          components: [lobbyRow],
+        });
         break;
       }
       case 'join': {
