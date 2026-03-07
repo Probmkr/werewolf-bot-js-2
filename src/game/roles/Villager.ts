@@ -1,10 +1,10 @@
-import type { Role, Team, NightActionType } from './Role.js';
+import type { Role, Team } from './Role.js';
 
 export class Villager implements Role {
   readonly id = 'villager';
   readonly name = '村人';
   readonly team: Team = 'village';
-  readonly nightActionType: NightActionType = 'none';
+  readonly nightActionType = null;
 
   canActAt(_dayNumber: number): boolean {
     return false;

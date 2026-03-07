@@ -5,6 +5,7 @@ import {
   TextChannel,
 } from 'discord.js';
 import { Game } from './Game.js';
+import type { NightActionType } from './roles/Role.js';
 import { NIGHT_ACTION_TIMEOUT_MS } from '../config.js';
 
 class GameManager {
@@ -81,9 +82,9 @@ class GameManager {
     const aliveNonWolves = alivePlayers.filter(p => p.role?.team !== 'wolf');
 
     const sendPromises = alivePlayers
-      .filter(p => p.role && p.role.nightActionType !== 'none' && p.role.canActAt(game.dayNumber))
+      .filter(p => p.role && p.role.nightActionType !== null && p.role.canActAt(game.dayNumber))
       .map(async (player) => {
-        const actionType = player.role!.nightActionType as 'attack' | 'inspect' | 'guard';
+        const actionType = player.role!.nightActionType as NightActionType;
 
         const targetPool = actionType === 'attack' ? aliveNonWolves : alivePlayers;
         const targets = targetPool
@@ -92,7 +93,7 @@ class GameManager {
 
         if (targets.length === 0) return;
 
-        const prompts = {
+        const prompts: Record<NightActionType, string> = {
           attack: '🐺 **夜です。** 今夜の襲撃対象を選んでください。',
           inspect: '🔮 **夜です。** 占いたい相手を選んでください。',
           guard: '🛡️ **夜です。** 護衛したい相手を選んでください。',
