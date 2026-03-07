@@ -34,6 +34,9 @@ export class Game {
     if (this.players.some(p => p.id === player.id)) {
       throw new Error('すでに参加しています。');
     }
+    if (this.players.length >= this.maxPlayers) {
+      throw new Error(`参加者が上限に達しています。(最大 ${this.maxPlayers}人)`);
+    }
     this.players.push(player);
   }
 
@@ -44,12 +47,19 @@ export class Game {
     this.players = this.players.filter(p => p.id !== playerId);
   }
 
+  get maxPlayers(): number {
+    return this.settings.roles.length;
+  }
+
   start(): void {
     if (this.phase !== 'lobby') {
       throw new Error('ロビーフェーズではありません。');
     }
-    if (this.players.length !== this.settings.roles.length) {
-      throw new Error(`人数が合いません。参加者: ${this.players.length}人, 設定された役職: ${this.settings.roles.length}枠`);
+    if (this.players.length < 3) {
+      throw new Error(`参加者が少なすぎます。最低3人必要です。(現在 ${this.players.length}人)`);
+    }
+    if (this.players.length > this.maxPlayers) {
+      throw new Error(`参加者が多すぎます。最大${this.maxPlayers}人まで。(現在 ${this.players.length}人)`);
     }
 
     this.assignRoles();
@@ -63,9 +73,9 @@ export class Game {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffledRoles[i], shuffledRoles[j]] = [shuffledRoles[j], shuffledRoles[i]];
     }
+    // 参加者数分だけ役職を先頭から使用する
     this.players.forEach((player, index) => {
-      const roleId = shuffledRoles[index];
-      player.role = createRole(roleId);
+      player.role = createRole(shuffledRoles[index]);
     });
   }
 }
